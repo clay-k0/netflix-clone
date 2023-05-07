@@ -9,9 +9,10 @@ export default async function handler(
 ) {
   try {
     if (req.method === "POST") {
+    } else if (req.method === "PUT") {
       const { currentUser } = await serverAuth(req, res);
 
-      const { movieId } = req.body;
+      const { movieId, favorite } = req.body;
 
       const existingMovie = await prismadb.movie.findUnique({
         where: {
@@ -23,36 +24,9 @@ export default async function handler(
         throw new Error("Invalid ID");
       }
 
-      const user = await prismadb.user.update({
-        where: {
-          email: currentUser.email || "",
-        },
-        data: {
-          favoriteIds: {
-            push: movieId,
-          },
-        },
-      });
-
-      return res.status(200).json(user);
-    }
-
-    if (req.method === "DELETE") {
-      const { currentUser } = await serverAuth(req, res);
-
-      const { movieId } = req.body;
-
-      const existingMovie = await prismadb.movie.findUnique({
-        where: {
-          id: movieId,
-        },
-      });
-
-      if (!existingMovie) {
-        throw new Error("Invalid ID");
-      }
-
-      const updatedFavoriteIds = without(currentUser.favoriteIds, movieId);
+      const updatedFavoriteIds = favorite
+        ? [...currentUser.favoriteIds, movieId]
+        : without(currentUser.favoriteIds, movieId);
 
       const updatedUser = await prismadb.user.update({
         where: {
@@ -64,9 +38,10 @@ export default async function handler(
       });
 
       return res.status(200).json(updatedUser);
+    } else if (req.method === "DELETE") {
+    } else {
+      return res.status(405).end();
     }
-
-    return res.status(405).end();
   } catch (error) {
     console.log(error);
 
